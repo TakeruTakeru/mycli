@@ -1,23 +1,42 @@
 package golang_util
 
-import "os"
-
-import "fmt"
-import "path"
+import (
+	"fmt"
+	"os"
+	"os/exec"
+)
 
 func InitializeEnv(dir string) {
-	// cmd: go mod init
-	cPath := path.Clean(dir)
-	file, err := os.Create(cPath + "/go.mod")
+	pathStat, err := os.Stat(dir)
 	if err != nil {
-		m := fmt.Errorf("Failed to Create File: %s", cPath+"go.mod")
+		m := fmt.Errorf("%v", err)
 		fmt.Println(m)
+		os.Exit(1)
 	}
+	if !pathStat.IsDir() {
+		m := fmt.Errorf("%v is not directory", pathStat.Name())
+		fmt.Println(m)
+		os.Exit(1)
+	}
+	pwd, _ := os.Getwd()
+	os.Chdir(dir)
+	cmd, err := exec.Command("go", "mod", "init").Output()
+	if err != nil {
+		fmt.Printf("execute cmd error: %v", err)
+		os.Exit(1)
+	}
+	fmt.Printf("%v\n", cmd)
 	buf := make([]byte, 1024)
-	_, err = file.Read(buf)
+	f, err := os.OpenFile(string(cmd)+"go.mod", os.O_RDONLY, 0755)
+	f.Read(buf)
 	if err != nil {
-		m := fmt.Errorf("Failed to Read File: %s", cPath+"/go.mod")
-		fmt.Println(m)
+		fmt.Printf("Failed Read: %v", err)
+		os.Exit(1)
 	}
+	if err := f.Close(); err != nil {
+		fmt.Printf("err: %v", err)
+		os.Exit(1)
+	}
+	os.Chdir(pwd)
 	fmt.Println(string(buf))
 }
